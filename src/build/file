@@ -1,9 +1,0 @@
-total 200
--rw-r--r--   1 mayechi  staff  14114 Mar  9 20:01 CMakeCache.txt
-drwxr-xr-x  12 mayechi  staff    384 Mar 26 22:46 CMakeFiles
--rw-r--r--   1 mayechi  staff   7392 Mar 26 21:39 Makefile
--rw-r--r--   1 mayechi  staff   1572 Mar  9 20:01 cmake_install.cmake
---w-------   1 mayechi  staff      0 Mar 26 22:50 file
--rwxr-xr-x   1 mayechi  staff  33827 Mar 16 13:45 piperw
--rwxr-xr-x   1 mayechi  staff  35986 Mar 26 22:46 shell
-hello,file!

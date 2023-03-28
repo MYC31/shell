@@ -1,3 +1,0 @@
-/Users/mayechi/major/OperatingSystem/Shell_Lab/src/build/CMakeFiles/shell.dir
-/Users/mayechi/major/OperatingSystem/Shell_Lab/src/build/CMakeFiles/edit_cache.dir
-/Users/mayechi/major/OperatingSystem/Shell_Lab/src/build/CMakeFiles/rebuild_cache.dir

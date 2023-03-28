@@ -7,16 +7,13 @@
 #include "unistd.h"
 #include "fcntl.h"
 #include "syswrap.h"
+#include "history.h"
+
 
 
 /* global pointer to history */
-char **         history;
-/* crusor of history */
-size_t          crusor;
-/* capacity of history */
-static size_t   capacity;
-
-
+extern char **         history;
+extern size_t          crusor;
 
 
 /*
@@ -41,91 +38,6 @@ static int cmdparse(char *cmd, char **argv, const char *dlim)
     return argc;
 }  
 
-
-
-/*
- * judge if the cmd is background job
- * @param cmd   command line input
- * @retval  1 if command is background, 0 otherwise
- */
-static int isbackground(const char *cmd) 
-{
-    size_t len = strlen(cmd);
-    return (cmd[len-1]=='&') ? 
-            BACK_PROG : FORE_PROG;
-}
-
-
-
-/*
- * judge if the command is internal job
- * @param argv  parsed command line input
- * @param argc  number of string in argv
- * @retval  1 if process is internal, 0 otherwise
- */
-static int isinternal(char ** argv, int argc)
-{
-    int rval;
-    hash_t hashval = hash(argv[0]);
-    switch (hashval) {
-        case CD_HASH: 
-        case HIS_HASH:
-        case EXIT_HASH: 
-        case MYTOP_HASH:    rval = 1;   break;
-        default:            rval = 0;
-    }
-    // if (hashval == CD_HASH || hashval == HIS_HASH 
-    //     || hashval == EXIT_HASH || hashval == MYTOP_HASH) {
-    //         rval = 1;
-    //     } else { rval = 0; }
-    return rval;
-}
-
-
-
-/*
- * initialize a history array 
- * @retval  initialized history.
- */
-static char **init_history()
-{
-    crusor = 0;
-    capacity = INIT_CAPACITY;
-    history = malloc(INIT_CAPACITY*sizeof(char *));
-    assert(history != NULL);
-    for (size_t i = 0; i < INIT_CAPACITY; i++) {
-        history[i] = malloc(MAXLINE*sizeof(char));
-    }
-    return history;
-}
-
-
-
-/*
- * Add the command line into the history.
- * @param history   store the command line since the shell started
- * @param cmd       the new command line that needs storage
- * @retval          Pointer to history. 
- *                  NULL if failure, history if success.
- */
-static char **addhistory(char **history, const char *cmd)
-{
-    /* history needs expansion */
-    if (crusor == capacity) {
-        /* expand the history */
-        size_t new_capacity = newcapacity(capacity);
-        history = realloc(history, new_capacity*sizeof(char *));
-        assert(history != NULL);
-        for (size_t i=capacity; i < new_capacity; i++)
-            history[i] = malloc(MAXLINE*sizeof(char));
-        capacity = new_capacity;
-    }
-
-    strcpy(history[crusor], cmd);
-    crusor++;
-
-    return history;
-}
 
 
 
@@ -194,26 +106,6 @@ static redir_sig * setredir(int argc, char **argv)
                 fflush(stderr);
             }
         }
-
-        // if (hashval == INPUT_HASH) {
-        //     sig->dir = REDIR_INPUT;
-        //     sig->oldfd = dup(STDIN_FILENO);
-        //     int newfd = open(argv[i+1], O_RDONLY, S_IRUSR);
-        //     dup2(newfd, STDIN_FILENO);
-        // } else if (hashval == OUTPUT_HASH) {
-        //     sig->dir = REDIR_OUTPUT;
-        //     sig->oldfd = dup(STDOUT_FILENO);
-        //     int newfd = open(argv[i+1], O_WRONLY|O_CREAT, S_IWUSR);
-        //     dup2(newfd, STDOUT_FILENO);
-        // } else if (hashval == APPEND_HASH) {
-        //     sig->dir = REDIR_APPEND;
-        //     sig->oldfd = dup(STDOUT_FILENO);
-        //     int newfd = open(argv[i+1], O_APPEND|O_CREAT|O_WRONLY, S_IWUSR);
-        //     dup2(newfd, STDOUT_FILENO);
-        // } else {
-        //     fprintf(stderr,"invalid parameter for I/O redirection!\n");
-        //     fflush(stderr);
-        // }
     }
     return sig;
 }
@@ -239,14 +131,6 @@ static void unsetredir(redir_sig *sig)
                 close(sig->oldfd);
                 break;
         }
-        // if (sig->dir == REDIR_INPUT) {
-        //     dup2(sig->oldfd, STDIN_FILENO);
-        //     close(sig->oldfd);
-        // } else if (sig->dir == REDIR_OUTPUT ||
-        //             sig->dir == REDIR_APPEND) {
-        //     dup2(sig->oldfd, STDOUT_FILENO);
-        //     close(sig->oldfd);
-        // }
         free(sig);
     }
 }
@@ -256,12 +140,9 @@ static void unsetredir(redir_sig *sig)
 /* not considering the collision between pipe and IO redirection */
 static task_struct * run_single_process(char *cmdline, char **envp, proc_pipe_info * info) /* cmdline is a copy of original command line */
 {
-    /* copy cmdline */
     char cmdline_cpy[MAXLINE];
     strcpy(cmdline_cpy, cmdline);
     char *buff[MAX_CMDARG_NUM];
-
-    /* parse the command line and put the result into buff */
     int argnum = cmdparse(cmdline, (char **)buff, CMD_DLIM);
     int jobtype = isinternal(buff, argnum);
     int mode = isbackground(cmdline_cpy);
@@ -272,9 +153,7 @@ static task_struct * run_single_process(char *cmdline, char **envp, proc_pipe_in
         buff[argnum-1] = NULL;
         argnum--;
     }
-
     redir_sig * sig = setredir(argnum, buff);
-    /* change the parsed cmd when I/O redirection is implemented */
     /* delete the redundent arg in buff */
     if (sig != NULL) {
         for (int i=sig->sig_idx; i < argnum; i++) {
@@ -289,8 +168,8 @@ static task_struct * run_single_process(char *cmdline, char **envp, proc_pipe_in
     task_struct * task;
     if (jobtype == 1) { /* internal case */
         /* let dointernal support info parameter later... */
-        pid = dointernal(hash(buff[0]), argnum, buff, mode);
-        task = NULL;
+        pid = dointernal(hash(buff[0]), argnum, buff, mode, info);
+        task = (info == NULL) ? NULL : task_init(mode, pid);
     } else {
         pid = doprogram(argnum, buff, envp, mode, info);
         task = task_init(mode, pid);
@@ -320,9 +199,6 @@ static task_struct * run_single_process(char *cmdline, char **envp, proc_pipe_in
 static task_queue * run_pipe_process(int argc, char **buff, char **envp)
 {
     task_queue * queue = task_queue_init(argc);
-
-    /* initialize pipe array */
-    // int pipe[argc-1][2];
     int pipenum = argc-1;
     // int **pipes = malloc(2*pipenum*sizeof(int));
     int pipes[pipenum][2];
@@ -340,36 +216,31 @@ static task_queue * run_pipe_process(int argc, char **buff, char **envp)
     queue->tasks[0] = run_single_process(buff[0], envp, info);
 
     int pid_idx;
-    /* proc_i   pipe_i   proc_i+1 */
     for (pid_idx=1; pid_idx < argc-1; pid_idx++) {
         dup2(pipes[pid_idx-1][PIPE_READEND], STDIN_FILENO);
         dup2(pipes[pid_idx][PIPE_WRITEEND], STDOUT_FILENO);
         info = proc_pipe_info_init(pipes, pipenum, pid_idx);
         queue->tasks[pid_idx] = run_single_process(buff[pid_idx], envp, info);
     }
-
     /* initialize the last pipe process*/
     dup2(pipes[pipenum-1][PIPE_READEND], STDIN_FILENO);
     dup2(stdout_fd, STDOUT_FILENO);
     info = proc_pipe_info_init(pipes, pipenum, argc-1);
     queue->tasks[argc-1] = run_single_process(buff[argc-1], envp, info);
 
-    /* all pipe processed exit, close pipe */
-    /* be aware to put this piece of code before free_task_queue!!! */
     for (int i=0; i < pipenum; i++) {
         close(pipes[i][PIPE_READEND]);
         close(pipes[i][PIPE_WRITEEND]);
     }
-
     /* retrieve stdin file descriptor */
     dup2(stdin_fd, STDIN_FILENO);
-
     /* close the saved stdin and stdout file descriptor */
     close(stdin_fd);
     close(stdout_fd);
 
     return queue;
 }
+
 
 
 /* stucked in the loop, cannot collect the "grep" process!!! */
@@ -383,9 +254,9 @@ static void wait_task_queue(task_queue * queue)
         if (VALID_PID(queue,i) && IS_FOREJOB(queue,i)) {
             pid_t pid = Waitpid(queue->tasks[i]->pid, NULL, 0);
             /* test code */
-            fprintf(stdout, "[%d]th: P[%d] has been collected\n", i, pid);
+            // fprintf(stdout, "[%d]th: P[%d] has been collected\n", i, pid);
         }
-        fflush(stdout);
+        // fflush(stdout);
         free(queue->tasks[i]);
     }
     free(queue);

@@ -7,6 +7,8 @@
 #include "stdlib.h"
 #include "assert.h"
 #include "fcntl.h"
+#include "pipehandler.h"
+#include "history.h"
 
 
 
@@ -21,7 +23,8 @@ extern size_t       crusor;
 #define INORDER_HISTORY         0
 #define REVERSE_HISTORY         1
 
-#define HISTORY_MODE(n) ((n)==crusor ? INORDER_HISTORY : REVERSE_HISTORY)
+#define HISTORY_MODE(n)         ((n)==crusor ? INORDER_HISTORY : REVERSE_HISTORY)
+#define HISTORY_START(n)        (crusor-(n))
 
 
 
@@ -33,6 +36,12 @@ static void myExit(int argc, char **argv);
 
 
 
+/* param: info->queue->pipes, info->queue->pipenum, info->procnum */
+static void handle_proc_pipe_info(proc_pipe_info * info);
+
+
+
+
 /*
  * core function that implements internal command
  * @type            specify the type among four ones
@@ -40,7 +49,7 @@ static void myExit(int argc, char **argv);
  * @param argv      string array of parsed command line
  * @retval          possible pid of background processs   
  */
-pid_t dointernal(long type, int argc, char **argv, int mode)
+pid_t dointernal(long type, int argc, char **argv, int mode, proc_pipe_info * info)
 {
     pid_t pid;
     void (*func)(int,char **);
@@ -53,23 +62,22 @@ pid_t dointernal(long type, int argc, char **argv, int mode)
         case MYTOP_HASH:    func = mytop;       break;
         default:            func = NULL;
     }
-    // if (type == CD_HASH) {
-    //     func = cd;
-    // } else if (type == HIS_HASH) {
-    //     func = phistory;
-    // } else if (type == EXIT_HASH) {
-    //     func = myExit;
-    // } else if (type == MYTOP_HASH) {
-    //     func = mytop;
-    // } else {
-    //     func = NULL;
-    // }
-
     assert(func != NULL);
 
     if (mode == FORE_PROG) {
-        func(argc, argv);
-        pid = -1;
+        if (info == NULL) {
+            func(argc, argv);
+            pid = -1;
+        } else {
+            pid = Fork();
+            if (pid == 0) {
+                handle_proc_pipe_info(info);
+                func(argc, argv);
+                exit(EXIT_SUCCESS);
+            }
+            // free(info->queue);
+            // free(info);
+        }
     } else if (mode == BACK_PROG) {
         pid = Fork();
         if (pid == 0) {
@@ -78,7 +86,6 @@ pid_t dointernal(long type, int argc, char **argv, int mode)
             dup2(fd, STDIN_FILENO);
             dup2(fd, STDOUT_FILENO);
             Signal(SIGCHLD, SIG_IGN);
-
             func(argc, argv);
             exit(EXIT_SUCCESS);
         } else {
@@ -112,40 +119,40 @@ static void cd(int argc, char **argv)
 
 
 
-inline static void print_single_history(const int index, int mode)
+
+inline static int history_num(char *arg)
 {
-    if (mode == INORDER_HISTORY) {
-        printf("%s", history[index]);
-    } else {
-        printf("%s", history[crusor-index]);
-    }
+    if (arg == NULL) return crusor;
+    int argval = atoi(arg);
+    int rval;
+    if (argval < 0) rval = 0;
+    else if(argval >= 0 && argval <= crusor) rval = argval;
+    else rval = crusor;
+    return rval;
 }
+
 
 
 /*
-    bug in history
-*/
+ *   bug in history
+ */
 static void phistory(int argc, char **argv)
 {
     assert(history !=  NULL);
-    int n = (argc > 1) ? atoi(argv[1]):crusor;
-    if (n < 0) {
-        printf("invalid argument for command 'history'\n");
-        return;
+    char *arg = (argc > 1) ? argv[1] : NULL;
+    int num = history_num(arg);
+    int mode = HISTORY_MODE(num);
+    int index = HISTORY_START(num);
+    for ( ; index < crusor; index++) {
+        fprintf(stdout, "%s", history[index]);
     }
-    int mode = HISTORY_MODE(n);
-    int index;
-    for (index=0; index < n; index++) {
-        print_single_history(index, mode);
-    }
-}
+    fflush(stdout);
+} 
 
 
 
 static void mytop(int argc, char **argv)
 {
-    // if (Execve("/usr/bin/top", NULL, NULL) < 0)
-    //     exit(EXIT_FAILURE);
     fprintf(stdout, "developing...\n");
     fflush(stdout);
 }
@@ -159,8 +166,6 @@ static void mytop(int argc, char **argv)
  */
 static void myExit(int argc, char **argv)
 {
-    // fprintf(stdout, "exiting Shell...\n");
-    // fflush(stdout);
     exit(EXIT_SUCCESS);
 }
 

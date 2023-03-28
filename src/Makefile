@@ -129,6 +129,30 @@ shell/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/shell.dir/build.make CMakeFiles/shell.dir/build
 .PHONY : shell/fast
 
+history.o: history.c.o
+.PHONY : history.o
+
+# target to build an object file
+history.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/shell.dir/build.make CMakeFiles/shell.dir/history.c.o
+.PHONY : history.c.o
+
+history.i: history.c.i
+.PHONY : history.i
+
+# target to preprocess a source file
+history.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/shell.dir/build.make CMakeFiles/shell.dir/history.c.i
+.PHONY : history.c.i
+
+history.s: history.c.s
+.PHONY : history.s
+
+# target to generate assembly for a file
+history.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/shell.dir/build.make CMakeFiles/shell.dir/history.c.s
+.PHONY : history.c.s
+
 internal.o: internal.c.o
 .PHONY : internal.o
 
@@ -234,6 +258,9 @@ help:
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
 	@echo "... shell"
+	@echo "... history.o"
+	@echo "... history.i"
+	@echo "... history.s"
 	@echo "... internal.o"
 	@echo "... internal.i"
 	@echo "... internal.s"

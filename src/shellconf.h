@@ -1,11 +1,12 @@
 #ifndef SHELLCONF_H
 #define SHELLCONF_H
+
 #include "stdio.h"
 #include "stdlib.h"
 #include "unistd.h"
 #include "syswrap.h"
 #include "assert.h"
-#endif
+#include "string.h"
 
 
 
@@ -23,14 +24,28 @@
 #define FORE_PROG           0
 #define HAND_JOB            ":)"    /* what's this? :) */
 
+
+/*
+ * judge if the cmd is background job
+ * @param cmd   command line input
+ * @retval  1 if command is background, 0 otherwise
+ */
+static int isbackground(const char *cmd) 
+{
+    size_t len = strlen(cmd);
+    return (cmd[len-1]=='&') ? 
+            BACK_PROG : FORE_PROG;
+}
+
+
 /* type of hash value */
-typedef long                hash_t;
+typedef int                 hash_t;
 
 /* hash value for internal call */
-#define CD_HASH             5863276
-#define HIS_HASH            229468404218647
-#define EXIT_HASH           6385204799
-#define MYTOP_HASH          210721293598
+#define CD_HASH             31852
+#define HIS_HASH            1884630415
+#define EXIT_HASH           2584151
+#define MYTOP_HASH          23311534
 
 /* type value for internal call */
 /* deprecated!                  */    
@@ -38,6 +53,30 @@ typedef long                hash_t;
 #define HISTORY             1
 #define MYTOP               2
 #define EXIT                3
+
+
+static inline hash_t        hash(char * str);
+
+/*
+ * judge if the command is internal job
+ * @param argv  parsed command line input
+ * @param argc  number of string in argv
+ * @retval  1 if process is internal, 0 otherwise
+ */
+static int isinternal(char ** argv, int argc)
+{
+    int rval;
+    hash_t hashval = hash(argv[0]);
+    switch (hashval) {
+        case CD_HASH: 
+        case HIS_HASH:
+        case EXIT_HASH: 
+        case MYTOP_HASH:    rval = 1;   break;
+        default:            rval = 0;
+    }
+    return rval;
+}
+
 
 /* value or operation for history */
 #define INIT_CAPACITY       2   /* should be 10 */
@@ -98,10 +137,10 @@ typedef struct {
  */
 static inline hash_t hash(char * str) 
 {
-    size_t hash = 5381;
+    size_t hash = 381;
     int c;
     while ((c = *str++)) {
-        hash = ((hash << 5) + hash) + c;
+        hash = ((hash << 3) + hash) + c;
     }
     // printf("%lu\n", hash);
     return hash;
@@ -178,3 +217,16 @@ static proc_pipe_info * proc_pipe_info_init(int pipes[][2], int pipenum, int pro
     info->procnum = procnum;
     return info;
 }
+
+
+static void free_proc_pipe_info(proc_pipe_info * info)
+{
+    if (info == NULL) return;
+    if (info->queue != NULL) 
+        free(info->queue);
+    free(info);
+}
+
+
+#endif
+

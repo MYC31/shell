@@ -50,6 +50,6 @@ pid_t doprogram(int argc, char **argv, char **envp, int mode, proc_pipe_info * i
         if (Execve(argv[0],argv,envp) < 0)
             exit(EXIT_FAILURE);
     } 
-    /* no collection needed for background process */
+    free_proc_pipe_info(info);
     return (mode == BACK_PROG) ? -1 : pid;
 }

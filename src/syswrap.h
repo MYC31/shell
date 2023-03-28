@@ -1,7 +1,7 @@
 #ifndef SYSWRAP_H
 #define SYSWRAP_H
 #include "unistd.h"
-#endif
+
 
 
 pid_t Fork(void);
@@ -11,3 +11,7 @@ int Chdir(const char *file);
 int Open(const char *file, int oflag);
 void (*Signal(int, void (*)(int)))(int);
 int Pipe(int fds[2]);
+
+#endif
+
+
