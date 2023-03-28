@@ -133,9 +133,7 @@ inline static int history_num(char *arg)
 
 
 
-/*
- *   bug in history
- */
+
 static void phistory(int argc, char **argv)
 {
     assert(history !=  NULL);
