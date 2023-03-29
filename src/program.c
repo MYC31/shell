@@ -5,6 +5,7 @@
 #include "fcntl.h"
 #include "shellconf.h"
 #include "assert.h"
+#include "signal.h"
 
 
 
