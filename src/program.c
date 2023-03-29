@@ -28,11 +28,14 @@ static void handle_proc_pipe_info(proc_pipe_info * info)
 
 static void handle_background_proc(int mode)
 {
+    // fprintf(stdout, "hit handle_background_proc");
+    // fflush(stdout);
     if (mode == BACK_PROG) {
         /* code for UNIX system */
         int fd = open("/dev/null", O_RDWR, S_IRWXU);
         dup2(fd, STDIN_FILENO);
         dup2(fd, STDOUT_FILENO);
+        close(fd);
         /* UNIX takeover control */
         Signal(SIGCHLD, SIG_IGN);
     }

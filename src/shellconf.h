@@ -108,9 +108,9 @@ static inline hash_t        hash(char * str);
 
 
 /* hash value for redirection pattern */    
-#define OUTPUT_HASH         177635
-#define INPUT_HASH          177633
-#define APPEND_HASH         5862017
+#define OUTPUT_HASH         3491
+#define INPUT_HASH          3489
+#define APPEND_HASH         31481
 
 
 /* data structure for handling process collection */
